@@ -1,0 +1,21 @@
+
+
+# Read API token from dynatrace.properties file
+dynatrace_api_token=$(grep -Po '(?<=api_token=).*' dynatrace.properties)
+
+# Print API token for verification
+echo "Dynatrace API Token: $dynatrace_api_token"
+
+# Download Dynatrace OneAgent Installer
+wget -O Dynatrace-OneAgent-Linux-1.285.113.20240227-120645.sh \
+  "https://oll44090.live.dynatrace.com/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+  --header="Authorization: Api-Token $dynatrace_api_token"
+
+# Download Dynatrace Certificate
+wget https://ca.dynatrace.com/dt-root.cert.pem
+
+# Verify Installer Signature
+openssl cms -verify -CAfile dt-root.cert.pem < <(echo -e 'Content-Type: multipart/signed; protocol="application/x-pkcs7-signature"; micalg="sha-256"; boundary="--SIGNED-INSTALLER"\n\n\n----SIGNED-INSTALLER\n' && cat Dynatrace-OneAgent-Linux-1.285.113.20240227-120645.sh) > /dev/null
+
+# Run Installer
+/bin/sh Dynatrace-OneAgent-Linux-1.285.113.20240227-120645.sh --set-monitoring-mode=fullstack --set-app-log-content-access=true
